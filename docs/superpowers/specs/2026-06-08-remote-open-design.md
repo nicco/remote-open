@@ -70,7 +70,7 @@ Carries raw TCP bytes for a tunnel in either direction. The server unpacks and f
 
 - Location: `/usr/local/bin/remote-open-shim`
 - Replaces `/usr/bin/xdg-open` via symlink
-- Configured via env var `REMOTE_OPEN_SERVER` or config file `/etc/remote-open/config`
+- Configured via `~/.remote-open/config.json`
 - On invocation with a URL: `POST <server>/open` with the URL as plain text body
 - Fire-and-forget — exits immediately, does not read the response
 - If no URL argument: exits 0 silently
@@ -90,7 +90,7 @@ Carries raw TCP bytes for a tunnel in either direction. The server unpacks and f
 ### remote-open-client
 
 - Go background daemon for macOS, no UI
-- Configured via `--server ws://<host>:20080/ws` or config file `~/.remote-open-client.json`
+- Configured via `~/.remote-open/config.json`
 - On startup: connect WebSocket, retry with exponential backoff (1s → 30s max) on failure
 - Message loop:
   - `open-url`: parse URL. If localhost/127.0.0.1 → start mirrored TCP listener on `127.0.0.1:<port>`, begin periodic ping loop. Otherwise → `exec("open", url)`.
@@ -117,13 +117,14 @@ docker run -d \
 ```bash
 sudo mv /usr/bin/xdg-open /usr/bin/xdg-open.real
 sudo ln -s /usr/local/bin/remote-open-shim /usr/bin/xdg-open
-export REMOTE_OPEN_SERVER=http://<host-ip>:20080
+# ~/.remote-open/config.json: { "server": "http://<host-ip>:20080" }
 ```
 
 ### Client
 
 ```bash
-remote-open-client --server ws://<host-ip>:20080/ws
+# ~/.remote-open/config.json: { "server": "ws://<host-ip>:20080/ws" }
+remote-open-client
 ```
 
 Run via `launchd` for persistence:
@@ -138,8 +139,6 @@ Run via `launchd` for persistence:
     <key>ProgramArguments</key>
     <array>
         <string>/usr/local/bin/remote-open-client</string>
-        <string>--server</string>
-        <string>ws://192.168.1.50:20080/ws</string>
     </array>
     <key>KeepAlive</key>
     <true/>
@@ -149,15 +148,23 @@ Run via `launchd` for persistence:
 </plist>
 ```
 
-## Configuration Summary
+## Configuration
+
+All components read from `~/.remote-open/config.json` where applicable (shim, client). The server uses a CLI flag.
+
+```json
+// ~/.remote-open/config.json on Linux (shim)
+{ "server": "http://192.168.1.50:20080" }
+
+// ~/.remote-open/config.json on macOS (client)
+{ "server": "ws://192.168.1.50:20080/ws" }
+```
 
 | Piece | Config |
 |---|---|
 | Server | `--port 20080` |
-| Shim | `REMOTE_OPEN_SERVER=http://<host>:20080` |
-| Client | `--server ws://<host>:20080/ws` |
-
-The server address and port are the only shared configuration.
+| Shim | `~/.remote-open/config.json` → `server` (HTTP) |
+| Client | `~/.remote-open/config.json` → `server` (WebSocket) |
 
 ## Error Handling
 
