@@ -2,9 +2,12 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/nicco/remote-open/internal/protocol"
@@ -51,4 +54,45 @@ func (h *Handler) handleWS(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("client connected")
 	h.hub.Register <- conn
+
+	go func() {
+		defer conn.Close()
+		for {
+			_, raw, err := conn.ReadMessage()
+			if err != nil {
+				log.Printf("client read error: %v", err)
+				return
+			}
+			h.handleWSMessage(conn, raw)
+		}
+	}()
+}
+
+func (h *Handler) handleWSMessage(conn *websocket.Conn, raw []byte) {
+	msg, err := protocol.Unmarshal(raw)
+	if err != nil {
+		log.Printf("unmarshal error: %v", err)
+		return
+	}
+	switch m := msg.(type) {
+	case protocol.Ping:
+		alive := isPortAlive(m.Port)
+		pong := protocol.Pong{Type: protocol.TypePong, Port: m.Port, Alive: alive}
+		data, _ := json.Marshal(pong)
+		conn.WriteMessage(websocket.TextMessage, data)
+	case protocol.ProxyData:
+		// TODO: Task 7
+	default:
+		log.Printf("unhandled message type: %T", msg)
+	}
+}
+
+func isPortAlive(port int) bool {
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	c, err := net.DialTimeout("tcp", addr, 2*time.Second)
+	if err != nil {
+		return false
+	}
+	c.Close()
+	return true
 }
