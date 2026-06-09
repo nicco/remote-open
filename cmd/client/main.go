@@ -38,10 +38,12 @@ func main() {
 				action := client.RouteURL(m.URL)
 				switch action.Kind {
 				case client.ActionTunnel:
-					tm.StartTunnel(action.Port)
-					time.Sleep(500 * time.Millisecond)
-					localURL := fmt.Sprintf("http://127.0.0.1:%d", action.Port)
-					exec.Command("open", localURL).Start()
+					localPort := tm.StartTunnel(action.Port)
+					if localPort > 0 {
+						time.Sleep(500 * time.Millisecond)
+						localURL := fmt.Sprintf("http://127.0.0.1:%d", localPort)
+						exec.Command("open", localURL).Start()
+					}
 				case client.ActionExternal:
 					exec.Command("open", m.URL).Start()
 				}

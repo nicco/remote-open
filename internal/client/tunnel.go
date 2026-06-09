@@ -22,29 +22,28 @@ func NewTunnelManager(chiselServer string) *TunnelManager {
 	}
 }
 
-// StartTunnel runs a chisel client to tunnel the given port.
-// chisel client <server> <local-port>:localhost:<remote-port>
-func (tm *TunnelManager) StartTunnel(port int) {
+// StartTunnel runs a chisel client to tunnel to the server's port.
+// Returns the local Mac port to connect to (0 if failed).
+func (tm *TunnelManager) StartTunnel(remotePort int) int {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
-	if _, exists := tm.processes[port]; exists {
-		log.Printf("chisel tunnel for port %d already running", port)
-		return
+	if _, exists := tm.processes[remotePort]; exists {
+		return 50000 + (remotePort % 10000)
 	}
 
-	remote := fmt.Sprintf("R:%d:127.0.0.1:%d", port, port)
+	localPort := 50000 + (remotePort % 10000)
+	remote := fmt.Sprintf("R:%d:127.0.0.1:%d", localPort, remotePort)
 	cmd := exec.Command("chisel", "client", tm.chiselServer, remote)
-	cmd.Stdout = nil
-	cmd.Stderr = nil
 
 	if err := cmd.Start(); err != nil {
-		log.Printf("chisel start error port %d: %v", port, err)
-		return
+		log.Printf("chisel start error port %d: %v", remotePort, err)
+		return 0
 	}
 
-	tm.processes[port] = cmd
-	log.Printf("chisel tunnel started: 127.0.0.1:%d -> server:%d", port, port)
+	tm.processes[remotePort] = cmd
+	log.Printf("chisel tunnel: 127.0.0.1:%d -> server:%d", localPort, remotePort)
+	return localPort
 }
 
 // StopTunnel kills the chisel process for the given port.
