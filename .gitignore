@@ -1,2 +1,5 @@
 .worktrees/
-client
+*.exe
+remote-open-server
+remote-open-client
+remote-open-shim
