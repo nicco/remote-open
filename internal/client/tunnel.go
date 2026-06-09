@@ -33,7 +33,7 @@ func (tm *TunnelManager) StartTunnel(port int) {
 		return
 	}
 
-	remote := fmt.Sprintf("R:%d", port)
+	remote := fmt.Sprintf("R:%d:127.0.0.1:%d", port, port)
 	cmd := exec.Command("chisel", "client", tm.chiselServer, remote)
 	cmd.Stdout = nil
 	cmd.Stderr = nil
