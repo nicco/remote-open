@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -81,38 +80,6 @@ func (h *Handler) handleWSMessage(conn *websocket.Conn, raw []byte) {
 		pong := protocol.Pong{Type: protocol.TypePong, Port: m.Port, Alive: alive}
 		data, _ := json.Marshal(pong)
 		conn.WriteMessage(websocket.TextMessage, data)
-	case protocol.ProxyData:
-		addr := fmt.Sprintf("127.0.0.1:%d", m.Port)
-		c, err := net.DialTimeout("tcp", addr, 5*time.Second)
-		if err != nil {
-			log.Printf("proxy dial error port %d: %v", m.Port, err)
-			return
-		}
-		decoded, err := base64.StdEncoding.DecodeString(m.Data)
-		if err != nil {
-			c.Close()
-			log.Printf("proxy base64 decode error: %v", err)
-			return
-		}
-		if _, err := c.Write(decoded); err != nil {
-			c.Close()
-			return
-		}
-		buf := make([]byte, 32*1024)
-		n, err := c.Read(buf)
-		c.Close()
-		if err != nil && err.Error() != "EOF" {
-			return
-		}
-		if n > 0 {
-			resp := protocol.ProxyData{
-				Type: protocol.TypeProxyData,
-				Port: m.Port,
-				Data: base64.StdEncoding.EncodeToString(buf[:n]),
-			}
-			data, _ := json.Marshal(resp)
-			conn.WriteMessage(websocket.TextMessage, data)
-		}
 	default:
 		log.Printf("unhandled message type: %T", msg)
 	}
