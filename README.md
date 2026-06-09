@@ -96,4 +96,4 @@ launchctl load ~/Library/LaunchAgents/com.nicco.remote-open-client.plist
 | Key | Required | Example |
 |---|---|---|
 | `server` | yes | `"ws://10.0.0.5:20080/ws"` (Mac) / `"http://localhost:20080"` (Linux) |
-| `ssh_user` | Mac only | `"nicco"` |
+| `ssh_user` | Mac only | `"your_ssh_username"` |

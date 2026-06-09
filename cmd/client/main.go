@@ -24,7 +24,7 @@ func main() {
 	sshHost := extractHost(cfg.Server)
 	sshUser := cfg.SSHUser
 	if sshUser == "" {
-		sshUser = "nicco"
+		log.Fatal("config: ssh_user not set. Add it to ~/.remote-open/config.json")
 	}
 	tm := client.NewTunnelManager(sshHost, sshUser)
 
