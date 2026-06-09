@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os/exec"
 	"strconv"
+	"time"
 
 	"github.com/nicco/remote-open/internal/client"
 	"github.com/nicco/remote-open/internal/config"
@@ -38,6 +39,7 @@ func main() {
 				switch action.Kind {
 				case client.ActionTunnel:
 					tm.StartTunnel(action.Port)
+					time.Sleep(500 * time.Millisecond)
 					localURL := fmt.Sprintf("http://127.0.0.1:%d", action.Port)
 					exec.Command("open", localURL).Start()
 				case client.ActionExternal:
