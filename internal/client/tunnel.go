@@ -1,27 +1,60 @@
 package client
 
 import (
+	"fmt"
+	"log"
+	"os/exec"
 	"sync"
 )
 
-// ProxyManager tracks active server-side proxies keyed by remote port.
-type ProxyManager struct {
-	proxies map[int]int // remote port -> proxy port
-	mu      sync.Mutex
+// TunnelManager manages SSH tunnels to the server.
+type TunnelManager struct {
+	sshHost  string
+	sshUser  string
+	processes map[int]*exec.Cmd
+	mu       sync.Mutex
 }
 
-func NewProxyManager() *ProxyManager {
-	return &ProxyManager{proxies: make(map[int]int)}
+func NewTunnelManager(sshHost, sshUser string) *TunnelManager {
+	return &TunnelManager{
+		sshHost:   sshHost,
+		sshUser:   sshUser,
+		processes: make(map[int]*exec.Cmd),
+	}
 }
 
-func (pm *ProxyManager) Add(remotePort, proxyPort int) {
-	pm.mu.Lock()
-	pm.proxies[remotePort] = proxyPort
-	pm.mu.Unlock()
+// StartTunnel opens an SSH tunnel for the given port. Returns the local port.
+func (tm *TunnelManager) StartTunnel(remotePort int) int {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+
+	if _, exists := tm.processes[remotePort]; exists {
+		return remotePort
+	}
+
+	target := fmt.Sprintf("%s@%s", tm.sshUser, tm.sshHost)
+	spec := fmt.Sprintf("%d:localhost:%d", remotePort, remotePort)
+	cmd := exec.Command("ssh", "-N", "-L", spec, target)
+
+	if err := cmd.Start(); err != nil {
+		log.Printf("ssh tunnel error port %d: %v", remotePort, err)
+		return 0
+	}
+
+	tm.processes[remotePort] = cmd
+	log.Printf("ssh tunnel: 127.0.0.1:%d -> %s:%d", remotePort, tm.sshHost, remotePort)
+	return remotePort
 }
 
-func (pm *ProxyManager) Remove(remotePort int) {
-	pm.mu.Lock()
-	delete(pm.proxies, remotePort)
-	pm.mu.Unlock()
+func (tm *TunnelManager) StopTunnel(port int) {
+	tm.mu.Lock()
+	cmd, exists := tm.processes[port]
+	if exists {
+		delete(tm.processes, port)
+	}
+	tm.mu.Unlock()
+
+	if exists && cmd.Process != nil {
+		cmd.Process.Kill()
+	}
 }

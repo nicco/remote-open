@@ -8,7 +8,8 @@ import (
 )
 
 type Config struct {
-	Server string `json:"server"`
+	Server  string `json:"server"`
+	SSHUser string `json:"ssh_user"`
 }
 
 func DefaultPath() string {

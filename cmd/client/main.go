@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
@@ -22,10 +21,12 @@ func main() {
 		log.Fatal("config: server URL not set")
 	}
 
-	serverHost := extractHost(cfg.Server)
-	pm := client.NewProxyManager()
-
-	var wsWrite func([]byte) error
+	sshHost := extractHost(cfg.Server)
+	sshUser := cfg.SSHUser
+	if sshUser == "" {
+		sshUser = "nicco"
+	}
+	tm := client.NewTunnelManager(sshHost, sshUser)
 
 	conn := client.NewConn(cfg.Server,
 		func(raw []byte) {
@@ -39,29 +40,19 @@ func main() {
 				action := client.RouteURL(m.URL)
 				switch action.Kind {
 				case client.ActionTunnel:
-					// Request a server-side proxy
-					req := protocol.StartProxy{
-						Type: protocol.TypeStartProxy,
-						Port: action.Port,
-					}
-					data, _ := json.Marshal(req)
-					if wsWrite != nil {
-						wsWrite(data)
+					log.Printf("starting SSH tunnel for port %d", action.Port)
+					port := tm.StartTunnel(action.Port)
+					if port > 0 {
+						time.Sleep(500 * time.Millisecond)
+						localURL := fmt.Sprintf("http://127.0.0.1:%d", port)
+						exec.Command("open", localURL).Start()
 					}
 				case client.ActionExternal:
 					exec.Command("open", m.URL).Start()
 				}
-
-			case protocol.ProxyStarted:
-				log.Printf("proxy: port %d -> proxy port %d", m.Port, m.ProxyPort)
-				pm.Add(m.Port, m.ProxyPort)
-				time.Sleep(300 * time.Millisecond)
-				localURL := fmt.Sprintf("http://%s:%d", serverHost, m.ProxyPort)
-				exec.Command("open", localURL).Start()
 			}
 		},
 		func(writeFn func([]byte) error) {
-			wsWrite = writeFn
 			log.Printf("connection ready")
 		},
 	)
