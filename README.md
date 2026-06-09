@@ -81,6 +81,21 @@ launchctl load ~/Library/LaunchAgents/com.nicco.remote-open-client.plist
 - SSH access from Mac to Linux (key-based auth recommended)
 - Port 20080 accessible from Mac to Linux
 
+### SSH Setup (passwordless)
+
+The Mac client creates SSH tunnels automatically. Set up key-based auth so it works without prompts:
+
+```bash
+# On Mac (one time):
+ssh-keygen -t ed25519 -f ~/.ssh/remote-open -N ""
+ssh-copy-id -i ~/.ssh/remote-open.pub your_user@your_server
+
+# Add to ~/.ssh/config:
+Host your_server_ip
+    IdentityFile ~/.ssh/remote-open
+    StrictHostKeyChecking accept-new
+```
+
 ## How it works
 
 1. Any tool on Linux calls `xdg-open <url>`
