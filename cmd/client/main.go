@@ -1,11 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
 	"os/exec"
-	"strconv"
 	"time"
 
 	"github.com/nicco/remote-open/internal/client"
@@ -22,14 +22,15 @@ func main() {
 		log.Fatal("config: server URL not set")
 	}
 
-	chiselServer := deriveChiselServer(cfg.Server)
-	tm := client.NewTunnelManager(chiselServer)
+	serverHost := extractHost(cfg.Server)
+	pm := client.NewProxyManager()
+
+	var wsWrite func([]byte) error
 
 	conn := client.NewConn(cfg.Server,
 		func(raw []byte) {
 			msg, err := protocol.Unmarshal(raw)
 			if err != nil {
-				log.Printf("unmarshal: %v", err)
 				return
 			}
 			switch m := msg.(type) {
@@ -38,20 +39,29 @@ func main() {
 				action := client.RouteURL(m.URL)
 				switch action.Kind {
 				case client.ActionTunnel:
-					localPort := tm.StartTunnel(action.Port)
-					if localPort > 0 {
-						time.Sleep(500 * time.Millisecond)
-						localURL := fmt.Sprintf("http://127.0.0.1:%d", localPort)
-						exec.Command("open", localURL).Start()
+					// Request a server-side proxy
+					req := protocol.StartProxy{
+						Type: protocol.TypeStartProxy,
+						Port: action.Port,
+					}
+					data, _ := json.Marshal(req)
+					if wsWrite != nil {
+						wsWrite(data)
 					}
 				case client.ActionExternal:
 					exec.Command("open", m.URL).Start()
 				}
-			default:
-				log.Printf("unhandled message: %T", msg)
+
+			case protocol.ProxyStarted:
+				log.Printf("proxy: port %d -> proxy port %d", m.Port, m.ProxyPort)
+				pm.Add(m.Port, m.ProxyPort)
+				time.Sleep(300 * time.Millisecond)
+				localURL := fmt.Sprintf("http://%s:%d", serverHost, m.ProxyPort)
+				exec.Command("open", localURL).Start()
 			}
 		},
 		func(writeFn func([]byte) error) {
+			wsWrite = writeFn
 			log.Printf("connection ready")
 		},
 	)
@@ -59,16 +69,7 @@ func main() {
 	conn.Run()
 }
 
-func deriveChiselServer(wsURL string) string {
-	u, err := url.Parse(wsURL)
-	if err != nil {
-		return ""
-	}
-	host := u.Hostname()
-	portStr := u.Port()
-	if portStr == "" {
-		portStr = "80"
-	}
-	port, _ := strconv.Atoi(portStr)
-	return fmt.Sprintf("%s:%d", host, port+1)
+func extractHost(wsURL string) string {
+	u, _ := url.Parse(wsURL)
+	return u.Hostname()
 }

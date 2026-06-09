@@ -3,10 +3,10 @@ package protocol
 import "encoding/json"
 
 const (
-	TypeOpenURL   = "open-url"
-	TypePing      = "ping"
-	TypePong      = "pong"
-	TypeProxyData = "proxy-data"
+	TypeOpenURL      = "open-url"
+	TypeStartProxy   = "start-proxy"
+	TypeProxyStarted = "proxy-started"
+	TypeProxyStop    = "proxy-stop"
 )
 
 type OpenURL struct {
@@ -14,21 +14,21 @@ type OpenURL struct {
 	URL  string `json:"url"`
 }
 
-type Ping struct {
+type StartProxy struct {
 	Type string `json:"type"`
 	Port int    `json:"port"`
 }
 
-type Pong struct {
-	Type  string `json:"type"`
-	Port  int    `json:"port"`
-	Alive bool   `json:"alive"`
+type ProxyStarted struct {
+	Type      string `json:"type"`
+	Port      int    `json:"port"`
+	ProxyPort int    `json:"proxy_port"`
 }
 
-type ProxyData struct {
-	Type string `json:"type"`
-	Port int    `json:"port"`
-	Data string `json:"data"`
+type ProxyStop struct {
+	Type      string `json:"type"`
+	Port      int    `json:"port"`
+	ProxyPort int    `json:"proxy_port"`
 }
 
 type generic struct{ Type string `json:"type"` }
@@ -43,16 +43,16 @@ func Unmarshal(data []byte) (interface{}, error) {
 		var m OpenURL
 		json.Unmarshal(data, &m)
 		return m, nil
-	case TypePing:
-		var m Ping
+	case TypeStartProxy:
+		var m StartProxy
 		json.Unmarshal(data, &m)
 		return m, nil
-	case TypePong:
-		var m Pong
+	case TypeProxyStarted:
+		var m ProxyStarted
 		json.Unmarshal(data, &m)
 		return m, nil
-	case TypeProxyData:
-		var m ProxyData
+	case TypeProxyStop:
+		var m ProxyStop
 		json.Unmarshal(data, &m)
 		return m, nil
 	default:
