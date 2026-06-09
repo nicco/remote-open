@@ -50,7 +50,7 @@ EOF
 /usr/local/bin/remote-open-client
 ```
 
-For persistence, add to `~/Library/LaunchAgents/com.nicco.remote-open-client.plist`:
+For persistence, add to `~/Library/LaunchAgents/io.github.remote-open-client.plist`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -59,7 +59,7 @@ For persistence, add to `~/Library/LaunchAgents/com.nicco.remote-open-client.pli
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.nicco.remote-open-client</string>
+    <string>io.github.remote-open-client</string>
     <key>ProgramArguments</key>
     <array>
         <string>/usr/local/bin/remote-open-client</string>
@@ -73,7 +73,7 @@ For persistence, add to `~/Library/LaunchAgents/com.nicco.remote-open-client.pli
 ```
 
 ```bash
-launchctl load ~/Library/LaunchAgents/com.nicco.remote-open-client.plist
+launchctl load ~/Library/LaunchAgents/io.github.remote-open-client.plist
 ```
 
 ### 3. Requirements
